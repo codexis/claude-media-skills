@@ -1,6 +1,6 @@
 ---
 name: media-distill
-description: "Fetches a YouTube video transcript and creates a zettelkasten note. Use when the user shares a YouTube link and asks to save / summarize / take a note (also works with short commands `w/s/b/a <url>`). Triggers on phrases like 'save this', 'make a note', 'сохрани это', 'сделай заметку', 'в закладки', 'summary', 'конспект'."
+description: "Fetches a YouTube video transcript and creates a zettelkasten note. Use when the user shares a YouTube link and asks to save / summarize / take a note (also works with short commands `w/s/b/a <url>`). Triggers on phrases like 'save this', 'make a note', 'bookmark', 'save for later', 'just export', 'summary'."
 ---
 
 # YouTube → Zettelkasten
@@ -10,20 +10,42 @@ Turns a YouTube video into an atomic Zettelkasten note and stores it under `Vide
 ## When to use
 
 - User sends a YouTube URL and asks for a summary / note / recap.
-- User says "save this", "make a note", "сохрани это", "сделай заметку" about a video.
+- User says "save this", "make a note", "bookmark this", "save for later", "just export" about a video.
 - You need to distill knowledge from a lecture, podcast, or tutorial.
 
 ## Determining status from the user's command
 
 Status is derived from the meaning of the message or from a short command prefix before the link.
 
-| Command              | Synonyms / intent                                 | status       |
-|----------------------|---------------------------------------------------|--------------|
-| `w <url>`, `s <url>` | "save", "make a note", "watched", «сохрани»       | `watched`    |
-| `b <url>`            | "bookmark", "watch later", «в закладки»           | `bookmarked` |
-| `a <url>`            | "archive", "source", "mentioned", «в архив»       | `archived`   |
+| Command              | Synonyms / intent                               | status       |
+|----------------------|-------------------------------------------------|--------------|
+| `w <url>`, `s <url>` | "save", "make a note", "watched"                | `watched`    |
+| `b <url>`            | "bookmark", "save for later", "watch later"     | `bookmarked` |
+| `a <url>`            | "archive", "just export", "source", "mentioned" | `archived`   |
 
 If no command prefix is given — infer from the phrasing. Default: `watched`.
+
+## Configuration
+
+Edit these settings directly in this file before using the skill.
+
+| Setting            | Default      | Description                                                                                                                                                                            |
+|--------------------|--------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `VAULT_ROOT`       | `.`          | Path to your Obsidian vault root (where `Video/`, `Book/`, `Person/`, `Author/` folders live). Can be absolute or relative to the repo root. Example: `~/notes` or `/home/user/vault`. |
+| `NOTE_LANG`        | `transcript` | Language for note content. `transcript` = match the video's transcript language. Or set a fixed locale: `en`, `ru`, `de`, etc.                                                         |
+| `TRANSCRIPT_LANGS` | `ru,en`      | Comma-separated preferred transcript languages passed to `--lang`. Order = priority.                                                                                                   |
+| `PYTHON`           | `python3`    | Python executable to use. Change to `.venv/bin/python3` if using a local venv.                                                                                                         |
+
+**Current values:**
+
+```
+VAULT_ROOT = .
+NOTE_LANG = transcript
+TRANSCRIPT_LANGS = ru,en
+PYTHON = python3
+```
+
+To reconfigure — edit the three lines inside the code block above. No other files need to change.
 
 ## Dependencies
 
@@ -46,7 +68,7 @@ If the user's message contains several YouTube URLs — process each one sequent
 ### 1. Fetch transcript and metadata
 
 ```bash
-.venv/bin/python3 .claude/skills/media-distill/scripts/youtube_export.py <URL> [--lang ru,en]
+<PYTHON> .claude/skills/media-distill/scripts/youtube_export.py <URL> --lang <TRANSCRIPT_LANGS>
 ```
 
 The script prints JSON to stdout:
@@ -97,39 +119,39 @@ Check whether `Person/<safe_channel_name>.md` exists:
 
 **Placeholders in `person.md`:**
 
-| Placeholder | Source (JSON) |
-|---|---|
-| `{{channel_handle}}` | `channel_handle` (channel handle, `@name` format) |
-| `{{channel_url}}` | `channel_url` |
-| `{{channel_description}}` | `channel_description` |
+| Placeholder               | Source (JSON)                                     |
+|---------------------------|---------------------------------------------------|
+| `{{channel_handle}}`      | `channel_handle` (channel handle, `@name` format) |
+| `{{channel_url}}`         | `channel_url`                                     |
+| `{{channel_description}}` | `channel_description`                             |
 
 ### 4. Create the Video note
 
 **Pick the template by status:**
 
-| status | Template |
-|---|---|
-| `watched` | `.claude/skills/media-distill/templates/video.md` (full distillation) |
-| `bookmarked` | `.claude/skills/media-distill/templates/video.md` (full distillation — produce it now, even if the user hasn't watched yet) |
-| `archived` | `.claude/skills/media-distill/templates/video-archived.md` (minimal stub) |
+| status       | Template                                                                                                                      |
+|--------------|-------------------------------------------------------------------------------------------------------------------------------|
+| `watched`    | `.claude/skills/media-distill/templates/video.md` (full distillation)                                                         |
+| `bookmarked` | `.claude/skills/media-distill/templates/video.md` (full distillation — produce it now, even if the user hasn't watched yet)   |
+| `archived`   | `.claude/skills/media-distill/templates/video-archived.md` (minimal stub — export book/author notes, skip video distillation) |
 
 **Placeholders (both video.md variants):**
 
-| Placeholder | Source |
-|---|---|
-| `{{url}}` | `url` from JSON |
+| Placeholder             | Source                                                                        |
+|-------------------------|-------------------------------------------------------------------------------|
+| `{{url}}`               | `url` from JSON                                                               |
 | `{{safe_channel_name}}` | `safe_channel_name` from JSON (sanitized — must match the `Person/` filename) |
-| `{{upload_date}}` | `upload_date` from JSON (video publish date, `YYYY-MM-DD`) |
-| `{{save_date}}` | today's date in `YYYY-MM-DD` |
-| `{{status}}` | `watched` / `bookmarked` / `archived` (from user command) |
-| `{{duration_sec}}` | `duration_sec` from JSON |
-| `{{lang}}` | `lang` from JSON (transcript language) |
-| `{{title}}` | `title` from JSON (original title used as the note heading) |
+| `{{upload_date}}`       | `upload_date` from JSON (video publish date, `YYYY-MM-DD`)                    |
+| `{{save_date}}`         | today's date in `YYYY-MM-DD`                                                  |
+| `{{status}}`            | `watched` / `bookmarked` / `archived` (from user command)                     |
+| `{{duration_sec}}`      | `duration_sec` from JSON                                                      |
+| `{{lang}}`              | `lang` from JSON (transcript language)                                        |
+| `{{title}}`             | `title` from JSON (original title used as the note heading)                   |
 
 **Filename:** `Video/<safe_title>.md` (field `safe_title` from the JSON).
 
 **Requirements for full-distillation notes (`watched` / `bookmarked`):**
-- Note language = transcript language (`lang`). This is the one rule that stays language-of-source regardless of these English instructions.
+- Note language = determined by `NOTE_LANG` (see Configuration). If `transcript` — use the video's transcript language (`lang` field). If a fixed locale is set — write the entire note in that language regardless of the transcript.
 - Each idea is atomic: one section = one thought.
 - No retelling — only distillation of meaning.
 - Tags as `#word`, wikilinks as `[[concept]]`.
@@ -138,30 +160,31 @@ Check whether `Person/<safe_channel_name>.md` exists:
 **Requirements for `archived` notes:**
 - 1–2 sentences of context — **why** this note exists as a source (what is referenced, what it links to).
 - No "Key ideas", "Practice", "Related" sections — the note is a stub for backlinks.
-- If the video is a book review / summary / breakdown, the context sentence naturally contains `[[Book Title]]` and `[[Author Name]]` wikilinks. Write them in the source language; step 5 resolves them.
+- Primary purpose: capture book/author references so step 5 runs and Book/Author notes are saved.
+- If the video mentions books: populate the **"Books mentioned"** section — one line per book in the format `[[Title]] — [[Author Name]]`. Write the title and author as they appear in the video (source language); step 5 resolves them to canonical filenames. If no books — omit the section entirely.
 
 ### 5. Post-process — book/author references
 
-**Trigger:** any forward `[[...]]` wikilink in the Video note body (context sentence for `archived`, body / Related section for `watched` / `bookmarked`) that points to a book or a book's author. If the video is a book review / summary / breakdown / «разбор книги» / «конспект книги», this step is mandatory.
+**Trigger:** any forward `[[...]]` wikilink in the Video note body (context sentence for `archived`, body / Related section for `watched` / `bookmarked`) that points to a book or a book's author. **Always run this step when such wikilinks exist** — book notes are saved unconditionally.
 
 **Action:** for each such wikilink pass through `book-flow.md`, passing the tentative name (exactly as written in the wikilink) as the input. Several books in one video → one pass per book.
 
-**Wikilink rewrite.** After `book-flow.md` finishes and the canonical Book/Author filenames are known, rewrite each matching wikilink in the Video note to Obsidian pipe syntax `[[canonical|tentative]]` — e.g. `[[Медленная продуктивность]]` → `[[Slow Productivity|Медленная продуктивность]]`. Reason: Obsidian does not auto-resolve `[[alias]]` through the `aliases:` frontmatter field inside wikilinks; the pipe form is required for the link to navigate to the canonical file while keeping the source-language display. If `tentative == canonical`, leave the wikilink as is.
+**Wikilink rewrite.** After `book-flow.md` finishes and the canonical Book/Author filenames are known, rewrite each matching wikilink in the Video note to Obsidian pipe syntax `[[canonical|tentative]]` — e.g. `[[La Cinquième Discipline]]` → `[[The Fifth Discipline|La Cinquième Discipline]]`. Reason: Obsidian does not auto-resolve `[[alias]]` through the `aliases:` frontmatter field inside wikilinks; the pipe form is required for the link to navigate to the canonical file while keeping the source-language display. If `tentative == canonical`, leave the wikilink as is.
 
 ## Common errors
 
-| Error | Cause | Resolution |
-|--------|---------|---------|
-| `403 Forbidden` | YouTube is blocking the IP | Run locally, not in CI/cloud |
-| `TranscriptsDisabled` | Author disabled captions | Transcript unavailable |
-| `NoTranscriptFound` | No captions for the requested language | Add `--lang en` |
-| Empty transcript | Private video or no captions | Check video availability |
-| `Sign in to confirm your age` | Age-restricted | Inform the user — the script does not bypass auth |
+| Error                         | Cause                                  | Resolution                                        |
+|-------------------------------|----------------------------------------|---------------------------------------------------|
+| `403 Forbidden`               | YouTube is blocking the IP             | Run locally, not in CI/cloud                      |
+| `TranscriptsDisabled`         | Author disabled captions               | Transcript unavailable                            |
+| `NoTranscriptFound`           | No captions for the requested language | Add `--lang en`                                   |
+| Empty transcript              | Private video or no captions           | Check video availability                          |
+| `Sign in to confirm your age` | Age-restricted                         | Inform the user — the script does not bypass auth |
 
 ## Skill files
 
 ```
-.claude/skills/media-distill/
+media-distill/
 ├── SKILL.md              ← this file (video flow, triggers, common errors)
 ├── book-flow.md          ← book recommendations flow (templates, list/null fields)
 ├── templates/

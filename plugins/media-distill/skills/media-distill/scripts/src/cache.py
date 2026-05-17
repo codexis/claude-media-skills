@@ -1,13 +1,13 @@
-"""Простой SQLite-кеш key→JSON с TTL. stdlib-only."""
+"""Simple SQLite key→JSON cache with TTL. stdlib-only."""
 
 import json
 import sqlite3
 import time
 from pathlib import Path
 
-_CACHE_DIR = Path(__file__).parent / ".cache"
+_CACHE_DIR = Path(__file__).parent.parent / ".cache"
 _CACHE_PATH = _CACHE_DIR / "cache.sqlite"
-_DEFAULT_TTL_SEC = 30 * 24 * 60 * 60  # 30 дней
+_DEFAULT_TTL_SEC = 30 * 24 * 60 * 60  # 30 days
 
 
 def _connect() -> sqlite3.Connection:
