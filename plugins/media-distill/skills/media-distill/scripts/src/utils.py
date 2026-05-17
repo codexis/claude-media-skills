@@ -3,11 +3,11 @@ import unicodedata
 
 
 def sanitize_filename(s: str) -> str:
-    # NFC: разные Unicode-представления одной строки (напр. из macOS vs Linux)
-    # должны дать одно имя файла.
+    # NFC: different Unicode representations of the same string (e.g. from macOS vs Linux)
+    # must produce the same filename.
     s = unicodedata.normalize("NFC", s)
-    # Срезаем Obsidian-хэштеги (пробел + #<буква>...): "Title #tag" → "Title",
-    # но "Harry Potter #1" остаётся.
+    # Strip Obsidian hashtags (space + #<letter>...): "Title #tag" → "Title",
+    # but "Harry Potter #1" is preserved.
     s = re.sub(r'\s+#[A-Za-z_]\S*.*$', '', s)
     s = re.sub(r'[\x00-\x1f\x7f]', '', s)
     s = re.sub(r'[|/\\:*?"<>]', ' - ', s)

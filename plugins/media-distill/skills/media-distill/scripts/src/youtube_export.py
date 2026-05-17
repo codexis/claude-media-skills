@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 """
-youtube_export.py — получает транскрипт YouTube-видео и метаданные, выводит JSON в stdout.
+youtube_export.py — fetches a YouTube video transcript and metadata, prints JSON to stdout.
 
-Использование:
+Usage:
     python .claude/skills/media-distill/scripts/youtube_export.py <youtube_url_or_video_id> [--lang ru,en]
 
-Зависимости:
+Dependencies:
     pip install -r .claude/skills/media-distill/scripts/requirements.txt
 
-Вывод (stdout):
+Output (stdout):
     {"video_id": "...", "transcript": "...", "lang": "ru", "title": "...",
      "channel": "...", "duration_sec": 1080, "url": "...",
      "channel_url": "...", "channel_name": "...", "channel_description": "..."}
 
-При ошибке — сообщение в stderr, exit code 1.
+On error — message to stderr, exit code 1.
 """
 
 import argparse
@@ -32,7 +32,7 @@ try:
         TranscriptsDisabled,
     )
 except ImportError:
-    print("youtube-transcript-api не установлен. Выполните: pip install -r .claude/skills/media-distill/scripts/requirements.txt", file=sys.stderr)
+    print("youtube-transcript-api is not installed. Run: pip install -r .claude/skills/media-distill/scripts/requirements.txt", file=sys.stderr)
     sys.exit(1)
 
 import cache
@@ -53,10 +53,10 @@ def extract_video_id(url: str) -> str:
     m = re.search(r"(?:v=|youtu\.be/|embed/|shorts/)([A-Za-z0-9_-]{11})", url)
     if m:
         return m.group(1)
-    # Если передан голый ID (11 символов)
+    # Bare video ID passed directly (11 chars)
     if re.fullmatch(r"[A-Za-z0-9_-]{11}", url):
         return url
-    raise ValueError(f"Не удалось извлечь video_id из: {url}")
+    raise ValueError(f"Could not extract video_id from: {url}")
 
 
 def fetch_transcript_api(video_id: str, lang_prefs: list[str]) -> tuple[str, str]:
@@ -70,21 +70,21 @@ def fetch_transcript_api(video_id: str, lang_prefs: list[str]) -> tuple[str, str
                 return " ".join(s.text if hasattr(s, "text") else s.get("text", "") for s in snippets), lang
             except NoTranscriptFound:
                 continue
-        # Берём первый доступный
+        # Fall back to the first available language
         try:
             t = next(iter(transcript_list))
         except StopIteration:
-            raise RuntimeError("Транскрипт недоступен ни на одном языке.")
+            raise RuntimeError("No transcript available in any language.")
         snippets = list(t.fetch())
         return " ".join(s.text if hasattr(s, "text") else s.get("text", "") for s in snippets), t.language_code
     except TranscriptsDisabled:
-        raise RuntimeError("Субтитры отключены для этого видео.")
+        raise RuntimeError("Subtitles are disabled for this video.")
 
 
 def parse_vtt(vtt_text: str) -> str:
-    # Rolling-display YouTube autocaps повторяют соседние строки;
-    # убираем повтор только если совпадает с предыдущей, а не глобально —
-    # чтобы не потерять намеренные повторы в речи.
+    # Rolling-display YouTube autocaps repeat adjacent lines;
+    # deduplicate only against the previous line, not globally —
+    # to preserve intentional repetition in speech.
     lines = vtt_text.splitlines()
     clean: list[str] = []
     for line in lines:
@@ -118,12 +118,12 @@ def fetch_transcript_ytdlp(video_id: str, lang_prefs: list[str], tmp_dir: Path) 
 
     vtt_files = list(tmp_dir.glob("*.vtt"))
     if not vtt_files:
-        raise RuntimeError("yt-dlp не скачал субтитры. Возможно, они недоступны.")
+        raise RuntimeError("yt-dlp did not download any subtitles. They may be unavailable.")
 
     by_lang: dict[str, Path] = {}
     for vf in vtt_files:
-        # yt-dlp пишет файлы как <id>.<lang>.vtt — второй суффикс и есть язык.
-        suffixes = vf.suffixes  # напр. ['.ru', '.vtt']
+        # yt-dlp names files as <id>.<lang>.vtt — the second-to-last suffix is the language.
+        suffixes = vf.suffixes  # e.g. ['.ru', '.vtt']
         lang = suffixes[-2].lstrip(".") if len(suffixes) >= 2 else "unknown"
         by_lang.setdefault(lang, vf)
 
@@ -148,7 +148,7 @@ def get_transcript(video_id: str, lang_prefs: list[str], tmp_dir: Path) -> tuple
         print("→ youtube-transcript-api...", file=sys.stderr)
         return fetch_transcript_api(video_id, lang_prefs)
     except (CouldNotRetrieveTranscript, RuntimeError) as e:
-        print(f"  ошибка: {e}", file=sys.stderr)
+        print(f"  error: {e}", file=sys.stderr)
         print("→ fallback: yt-dlp...", file=sys.stderr)
         return fetch_transcript_ytdlp(video_id, lang_prefs, tmp_dir)
 
@@ -187,10 +187,10 @@ def get_video_metadata(video_id: str) -> dict:
 def get_channel_metadata(channel_url: str) -> dict:
     cached = cache.get("channel", channel_url)
     if cached is not None:
-        print("  (из кеша)", file=sys.stderr)
+        print("  (from cache)", file=sys.stderr)
         return cached
 
-    # --playlist-items 0 — не качаем список видео, только метаданные канала.
+    # --playlist-items 0 — skip video list, fetch channel metadata only.
     cmd = ["yt-dlp", "--playlist-items", "0", "--dump-single-json", channel_url]
     data = _run_ytdlp_json(cmd)
     empty = {"channel_url": channel_url, "channel_name": "Unknown", "channel_handle": "", "channel_description": ""}
@@ -212,11 +212,11 @@ def get_channel_metadata(channel_url: str) -> dict:
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Получает транскрипт YouTube-видео, выводит JSON")
-    parser.add_argument("url", help="YouTube URL или video ID")
-    parser.add_argument("--lang", default="ru,en", help="Языки субтитров через запятую (default: ru,en)")
-    parser.add_argument("--no-meta", action="store_true", help="Пропустить запрос метаданных")
-    parser.add_argument("--no-channel", action="store_true", help="Пропустить запрос метаданных канала")
+    parser = argparse.ArgumentParser(description="Fetch a YouTube video transcript and output JSON")
+    parser.add_argument("url", help="YouTube URL or video ID")
+    parser.add_argument("--lang", default="ru,en", help="Comma-separated subtitle language preferences (default: ru,en)")
+    parser.add_argument("--no-meta", action="store_true", help="Skip video metadata fetch")
+    parser.add_argument("--no-channel", action="store_true", help="Skip channel metadata fetch")
     args = parser.parse_args()
 
     lang_prefs = [lang.strip() for lang in args.lang.split(",")]
@@ -232,30 +232,30 @@ def main():
         try:
             transcript, lang_used = get_transcript(video_id, lang_prefs, tmp_dir)
         except Exception as e:
-            print(f"Ошибка получения транскрипта: {e}", file=sys.stderr)
+            print(f"Failed to fetch transcript: {e}", file=sys.stderr)
             sys.exit(1)
 
     if not transcript.strip():
-        print("Транскрипт пуст.", file=sys.stderr)
+        print("Transcript is empty.", file=sys.stderr)
         sys.exit(1)
 
     metadata = {}
     if not args.no_meta:
-        print("→ метаданные...", file=sys.stderr)
+        print("→ video metadata...", file=sys.stderr)
         try:
             metadata = get_video_metadata(video_id)
         except Exception as e:
-            print(f"  метаданные недоступны: {e}", file=sys.stderr)
+            print(f"  metadata unavailable: {e}", file=sys.stderr)
 
     channel_meta = {}
     if not args.no_channel:
         channel_url = metadata.get("channel_url", "")
         if channel_url:
-            print("→ метаданные канала...", file=sys.stderr)
+            print("→ channel metadata...", file=sys.stderr)
             try:
                 channel_meta = get_channel_metadata(channel_url)
             except Exception as e:
-                print(f"  метаданные канала недоступны: {e}", file=sys.stderr)
+                print(f"  channel metadata unavailable: {e}", file=sys.stderr)
 
     handle = (
         channel_meta.get("channel_handle")

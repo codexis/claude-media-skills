@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-book_lookup.py — ищет метаданные книги через Google Books и Open Library, выводит JSON в stdout.
+book_lookup.py — fetches book metadata from Google Books and Open Library, prints JSON to stdout.
 
-Использование:
+Usage:
     python .claude/skills/media-distill/scripts/book_lookup.py --title "Book Title" [--author "Author Name"]
 
-Зависимости:
+Dependencies:
     pip install -r .claude/skills/media-distill/scripts/requirements.txt
 
-Вывод (stdout):
+Output (stdout):
     {"title": "...", "authors": ["..."], "year_published": 2005,
      "year_created": null, "pages": 320, "category": "..."}
 
-При ошибке — сообщение в stderr, exit code 1.
+On error — message to stderr, exit code 1.
 """
 
 import argparse
@@ -26,12 +26,12 @@ from utils import sanitize_filename
 try:
     import requests
 except ImportError:
-    print("requests не установлен. Выполните: pip install requests", file=sys.stderr)
+    print("requests is not installed. Run: pip install requests", file=sys.stderr)
     sys.exit(1)
 
 try:
     from dotenv import load_dotenv
-    load_dotenv(Path(__file__).parent / ".env")
+    load_dotenv(Path(__file__).parent.parent / ".env")
 except ImportError:
     pass
 
@@ -41,9 +41,9 @@ _OPEN_LIBRARY_UA = "exported-data-skill/0.1 (https://github.com/; personal-obsid
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Поиск метаданных книги")
-    parser.add_argument("--title", required=True, help="Название книги")
-    parser.add_argument("--author", default="", help="Имя автора (необязательно)")
+    parser = argparse.ArgumentParser(description="Book metadata lookup")
+    parser.add_argument("--title", required=True, help="Book title")
+    parser.add_argument("--author", default="", help="Author name (optional)")
     return parser.parse_args()
 
 
@@ -109,7 +109,7 @@ def fetch_google_books(title: str, author: str) -> dict | None:
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as e:
-        print(f"  Google Books недоступен: {e}", file=sys.stderr)
+        print(f"  Google Books unavailable: {e}", file=sys.stderr)
         return None
 
     items = data.get("items") or []
@@ -149,7 +149,7 @@ def fetch_open_library(title: str, author: str) -> dict | None:
         resp.raise_for_status()
         data = resp.json()
     except requests.RequestException as e:
-        print(f"  Open Library недоступен: {e}", file=sys.stderr)
+        print(f"  Open Library unavailable: {e}", file=sys.stderr)
         return None
 
     docs = data.get("docs") or []
@@ -185,8 +185,8 @@ def merge_results(gb: dict | None, ol: dict | None) -> dict | None:
             return v
         return secondary.get(field) if secondary else None
 
-    # У Open Library first_publish_year — год первой публикации (1990 для Fifth Discipline),
-    # у Google Books — год конкретного издания (может быть 2020). Предпочитаем OL.
+    # Open Library first_publish_year is the original publication year (e.g. 1990 for Fifth Discipline),
+    # while Google Books gives the edition year (may be 2020). Prefer OL.
     year_published = (ol.get("year_published") if ol else None) or pick("year_published")
 
     authors = pick("authors") or []
@@ -207,7 +207,7 @@ def main():
     ol = fetch_open_library(args.title, args.author)
     result = merge_results(gb, ol)
     if result is None:
-        print(f"Книга не найдена: {args.title!r}", file=sys.stderr)
+        print(f"Book not found: {args.title!r}", file=sys.stderr)
         sys.exit(1)
     result["safe_title"] = sanitize_filename(result.get("title") or "")
     result["safe_authors"] = [sanitize_filename(a) for a in result.get("authors") or []]
