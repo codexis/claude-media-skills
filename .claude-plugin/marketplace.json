@@ -1,0 +1,58 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "claudemediaskills",
+  "version": "1.0.0",
+  "owner": {
+    "name": "BuildWithClaude Community",
+    "email": "community@buildwithclaude.com",
+    "url": "https://github.com/codexis/claude-media-skills"
+  },
+  "metadata": {
+    "description": "A comprehensive community-driven collection of AI agents, slash commands, hooks, and MCP servers for Claude Code focused on media and content management automation",
+    "version": "1.0.0",
+    "homepage": "https://buildwithclaude.com",
+    "repository": "https://github.com/codexis/claude-media-skills",
+    "license": "MIT",
+    "keywords": [
+      "claude-code",
+      "agents",
+      "commands",
+      "hooks",
+      "mcp-servers",
+      "automation",
+      "ai-tools",
+      "media",
+      "distill",
+      "content",
+      "management"
+    ]
+  },
+  "plugins": [
+    {
+      "name": "media-distill",
+      "description": "YouTube → Obsidian Zettelkasten skill: fetches transcript and metadata, distills key ideas into atomic notes, extracts book/author references, and builds a linked knowledge graph.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Vlad",
+        "url": "https://github.com/codexis"
+      },
+      "repository": "https://github.com/codexis/claude-media-skills",
+      "license": "MIT",
+      "keywords": [
+        "youtube",
+        "obsidian",
+        "zettelkasten",
+        "transcript",
+        "knowledge-management",
+        "media",
+        "distill",
+        "content",
+        "automation",
+        "notes",
+        "books"
+      ],
+      "category": "productivity",
+      "source": "./plugins/media-distill"
+    }
+  ]
+}

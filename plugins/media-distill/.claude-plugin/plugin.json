@@ -1,0 +1,25 @@
+{
+  "name": "media-distill",
+  "version": "1.0.0",
+  "description": "Converts YouTube videos into atomic Zettelkasten notes for Obsidian. Fetches transcript via youtube-transcript-api / yt-dlp, distills key ideas, and auto-creates linked Person, Book, and Author notes.",
+  "author": {
+    "name": "Vlad",
+    "url": "https://github.com/codexis"
+  },
+  "repository": "https://github.com/codexis/claude-media-skills",
+  "license": "MIT",
+  "category": "productivity",
+  "keywords": [
+    "youtube",
+    "obsidian",
+    "zettelkasten",
+    "transcript",
+    "knowledge-management",
+    "media",
+    "distill",
+    "content",
+    "automation",
+    "notes",
+    "books"
+  ]
+}
