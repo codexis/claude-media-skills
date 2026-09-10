@@ -29,13 +29,15 @@ Converts YouTube videos into atomic [Zettelkasten](https://zettelkasten.de/intro
 Run from your **Obsidian vault root**:
 
 ```bash
-claude plugin install https://github.com/codexis/claude-media-skills/plugins/media-distill
+claude plugin marketplace add codexis/claude-media-skills
+claude plugin install media-distill@claude-media-skills
 ```
 
 Or from a local clone:
 
 ```bash
-claude plugin install /path/to/claude-media-skills/plugins/media-distill
+claude plugin marketplace add /path/to/claude-media-skills
+claude plugin install media-distill@claude-media-skills
 ```
 
 ### 2. Install Python dependencies
